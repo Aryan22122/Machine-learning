@@ -1,0 +1,96 @@
+from PIL import Image
+img = Image.open(r'C:\Users\ARYAN SHARMA\Desktop\do_it2.png').convert("L")
+img = img.resize((28,28))
+img_array = np.array(img)/255
+for i in range(img_array.shape[0]):
+    for j in range(img_array.shape[1]):
+        if img_array[i][j] > 0.5:  
+            img_array[i][j] = 0
+        else:                     
+            img_array[i][j] = 1
+
+def fn(img_array,i):
+    j=0;
+    while(j<28):
+        if img_array[j][i]==1:
+            return True
+        j+=1
+    return False
+def generator(img_array):
+    count = 0
+    check = False
+    for i in range(img_array.shape[1]):
+        res = fn(img_array,i)
+        if res and not check:
+            check = True
+            count+=1
+        if not res :
+            check = False
+    return count
+
+  number_of_no = generator(img_array)
+  
+import tensorflow
+from tensorflow import keras
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense,Flatten
+(X_train,y_train),(X_test,y_test) = keras.datasets.mnist.load_data()
+model = Sequential()
+model.add(Flatten(input_shape=(28,28)))
+model.add(Dense(128,activation='relu'))
+model.add(Dense(32,activation='relu'))
+
+model.add(Dense(32,activation='relu'))
+model.add(Dense(10,activation='softmax'))
+model.compile(loss='sparse_categorical_crossentropy',optimizer='Adam' , metrics = ['accuracy'])
+history  = model.fit(X_train,y_train,epochs=10,validation_split=0.2)
+def finder(img_array, model):
+    count = 0
+    found = False
+    prev_col = 0
+    digits = []
+
+    for i in range(img_array.shape[1]):
+        res = fn(img_array, i)
+        if res and not found:
+            found = True
+            prev_col = i
+        elif not res and found:
+            found = False
+            count += 1
+            digit = output(img_array, prev_col, i - 1, model)
+            if digit is not None:
+                digits.append(digit)
+
+    if found:
+        count += 1
+        digit = output(img_array, prev_col, img_array.shape[1] - 1, model)
+        if digit is not None:
+            digits.append(digit)
+
+    return digits
+def output(array,col1,col2,model):
+    img_array = np.zeros((28,col2-col1+1))
+    for i in range(28):
+        for j in range(col1, col2 + 1):
+            img_array[i][j - col1] = array[i][j]  
+    
+    img_array_resized = np.array(img) / 255.0
+    img_array_resized = img_array_resized.reshape(1, 28, 28)
+    
+    return img_array_resized
+
+def predict(l,model):
+    binarized_digits = []
+    for k in l:
+        binary_img = np.where(k > 0.5, 0.0, 1.0)
+        binarized_digits.append(binary_img)
+    for i in binarized_digits:
+        img_array2 = i.reshape(1, 28, 28)
+        pred = model.predict(img_array2)
+        digit = np.argmax(pred, axis=1)[0]
+        print("Predicted digit:", digit)
+l = finder(img_array,model)
+predict(l,model)
+        
+    
